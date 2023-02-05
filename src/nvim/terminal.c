@@ -1714,11 +1714,18 @@ static void adjust_topline(Terminal *term, buf_T *buf, long added)
   FOR_ALL_TAB_WINDOWS(tp, wp) {
     if (wp->w_buffer == buf) {
       linenr_T ml_end = buf->b_ml.ml_line_count;
-      bool following = ml_end == wp->w_cursor.lnum + added;  // cursor at end?
+      bool cur_at_end = ml_end == wp->w_cursor.lnum + added;  // cursor at end?
+      bool following = (wp->w_cursor.lnum == term->cursor.row
+                        && wp->w_cursor.col == term->cursor.col)
+                       || cur_at_end;
 
-      if (following || (wp == curwin && is_focused(term))) {
+      if (following) {
+        int new_pos = term->cursor.row + 1;
+        if(cur_at_end) {
+            new_pos = ml_end;
+        }
         // "Follow" the terminal output
-        wp->w_cursor.lnum = ml_end;
+        wp->w_cursor.lnum = new_pos;
         set_topline(wp, MAX(wp->w_cursor.lnum - wp->w_height_inner + 1, 1));
       } else {
         // Ensure valid cursor for each window displaying this terminal.
